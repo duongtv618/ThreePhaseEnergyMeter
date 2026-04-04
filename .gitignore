@@ -1,0 +1,12 @@
+.vscode/
+build/
+.mxproject
+local_config.cmake
+openocd.cfg
+*.log
+*.bin
+*.elf
+*.map
+*.o
+*.d
+*.a
