@@ -1,7 +1,8 @@
 /**
  * @file mock.c
  * @author your name (you@domain.com)
- * @brief Mock signal generation functions, simulate ADC data for testing DSP processing code without real ADC hardware.
+ * @brief Mock signal generation functions, simulate ADC data for testing DSP
+ * processing code without real ADC hardware.
  * @version 0.1
  * @date 2026-04-02
  *
@@ -10,171 +11,238 @@
  */
 
 #include "mock.h"
-#include "stm32f4xx.h"
+
 #include "FreeRTOS.h"
+#include "stm32f4xx.h"
 #include "task.h"
 
-static struct mock_dma_s
-{
-    mockSigCallback_t htCallback;
-    mockSigCallback_t tcCallback;
-    uint32_t signalPeriod;
+#define DEFAULT_TIMER_CLOCK 100000000
 
-    uint16_t *bufPointer;
-    uint32_t length;
-    enum
-    {
-        HT = 0u,
-        TC = 1u
-    } nextInt;
-} mockDMAConfig;
+static struct mock_dma_s {
+  void(*  htCallback)();
+  void(*  tcCallback)();
+  uint32_t signalPeriod;
 
-static void _mockTask(void *pvParameters);
+  uint16_t* buf_pointer;
+  uint16_t* start_ptr;
+  uint32_t length;
+  enum { HT = 0u, TC = 1u } next_int;
+} mock_DMA_cfg;
+
+static struct mock_sin_s {
+  float32_t f0;
+  float32_t fs;
+  float32_t f0_target;
+  float32_t step;
+} mock_sin;
+
+static void _mock_task(void* pvParameters);
 static StackType_t mock_task_stack[APP_DEFAULT_TASK_STACK_SIZE];
 static StaticTask_t mock_task_buffer;
+static void clamp(float32_t* x, float32_t ceil, float32_t floor);
+static int32_t get_noise_val(void);
+static float32_t harmonic_noise(float32_t n, float32_t omega);
+
+
+static float32_t harmonic_noise(float32_t n, float32_t omega) {
+  float32_t ret;
+  #ifdef USE_HARMONIC_NOISE
+  ret = HARMONIC_AMP * MOCK_ADC_MIDDLE_POINT * arm_sin_f32(2.0f * PI * n * omega);
+  #else
+  ret = 0.0f;
+  #endif
+  return ret;
+}
+
+static int32_t get_noise_val(void) {
+#if USE_RANDOM_NOISE
+  return (2 - (int32_t)(DWT->CYCCNT % 4));
+#else
+  return 0;
+#endif
+}
+
+static void clamp(float32_t* x, float32_t ceil, float32_t floor) {
+  if (*x < ceil) *x = ceil;
+  if (*x > floor) *x = floor;
+}
 
 /**
  * @brief Generates mock sine wave data for ADC simulation
  *
  * @param buffer Destination buffer to store the generated sine wave data
  * @param length Length of the buffer (number of samples)
- * @param jumpSpace Space between samples in the buffer
- * @param period Period of the sine wave
- * @param phaseShift Phase shift of the sine wave in degrees
+ * @param jump_space Space between samples in the buffer
+ * @param f0 Frequency of the sine wave
+ * @param fs Sampling frequency
+ * @param phase_shift Phase shift of the sine wave in degrees
  */
-void mockSinGen(uint16_t *buffer, uint32_t length, uint8_t jumpSpace, uint32_t period, float32_t phaseShift)
-{
-    for (uint32_t i = 0, pos = 0; i < length; i += jumpSpace, pos++)
-    {
-        float32_t bufferValue;
-        /** ADC range is from 0 to 4095 so middle point is 2047 */
-        #ifdef USE_HARMONIC_NOISE
-        bufferValue = (2047u * arm_sin_f32(2.0f * PI * (float)pos / (float)period + phaseShift * PI / 180.0f) + 2047U) +
-                    (2047u * HARMONIC_AMP_PERCENT / 100.0f * arm_sin_f32(2.0f * PI * HARMONIC_ * (float)pos / (float)period + phaseShift * PI / 180.0f));
-        #else
-        bufferValue = (2047u * arm_sin_f32(2.0f * PI * (float)pos / (float)period + phaseShift * PI / 180.0f) + 2047U);
-        #endif
-        #if USE_RANDOM_NOISE
-        /** Add some random noise to the signal, noise range is from -2 to 2 */
-        bufferValue = bufferValue - 2 + ((DWT->CYCCNT) % 4);
-        #endif
-        /** Truncate to 12-bit */
-        buffer[i] = bufferValue > 4095.0f ? 4095u : bufferValue < 0.0f ? 0u : (uint16_t)bufferValue;
-    }
+void mock_sin_gen(uint16_t* buffer, uint32_t length, uint8_t jump_space,
+                float32_t f0, float32_t fs, float32_t phase_shift) {
+  float32_t ts_delta = f0 / fs;
+  float32_t ts = 0.0f;
+  float32_t buf_val;
+  for (uint32_t i = 0, pos = 0; i < length; i += jump_space, pos++) {
+/** ADC range is from 0 to 4095 so middle point is 2047 */
+    buf_val = (MOCK_ADC_MIDDLE_POINT * AMPTITUE_PERCENT *
+                       arm_sin_f32(2.0f * PI * ts + phase_shift * PI / 180.0f) +
+                   MOCK_ADC_MIDDLE_POINT);
+    ts += ts_delta;
+    /** Truncate to 12-bit */
+    clamp(&buf_val, 0.0f, (float32_t)MOCK_ADC_MAX);
+    buffer[i] = (uint16_t)buf_val;
+  }
 }
 
 /**
- * @brief Init FreeRTOS task for generating mock signal data, and the callback will
- * be called after each period of signal generation, so that we can update the
- * signal data for testing DSP processing code without real ADC data.
+ * @brief Generate sine wave buffer
+ * @note Output will be va,ia,vb,ib,vc,ic
+ * @param buf is buffer
+ * @param bufLen is the length of buffer
+ * @param f0 is grid frequenncy
+ * @param fs is sampling frequency
+ * @param iPhaseShift is current phase shift
+ */
+void mock_sin_gen_ui_3_p(uint16_t* buf, uint32_t len, float32_t f0,
+                            float32_t fs, float32_t i_phase_shift) {
+  static float32_t omega = 0.0f;
+  float32_t delta_omega = f0 * 2.0f * PI / fs;
+  uint32_t couter = len / METER_PHASE_COUNT / METER_SIGNAL_COUNT;
+  float32_t va, ia, vb, ib, vc, ic;
+  for (size_t i = 0; i < couter; i++) {
+    va = (MOCK_ADC_MIDDLE_POINT * AMPTITUE_PERCENT *
+                   arm_sin_f32(omega + 0.0f * PI / 180.0f) +
+               MOCK_ADC_MIDDLE_POINT) + harmonic_noise(HARMONIC_, omega)
+                + get_noise_val() + harmonic_noise(HARMONIC_ * 3.0f, omega);
+    ia = (MOCK_ADC_MIDDLE_POINT * AMPTITUE_PERCENT *
+                   arm_sin_f32(omega + i_phase_shift * PI / 180.0f) +
+               MOCK_ADC_MIDDLE_POINT) + harmonic_noise(HARMONIC_, omega)
+                + get_noise_val() + harmonic_noise(HARMONIC_ * 3.0f, omega);
+    vb = (MOCK_ADC_MIDDLE_POINT * AMPTITUE_PERCENT *
+                   arm_sin_f32(omega - 120.0f * PI / 180.0f) +
+               MOCK_ADC_MIDDLE_POINT) + harmonic_noise(HARMONIC_, omega)
+               + (float32_t)get_noise_val() + harmonic_noise(HARMONIC_ * 3.0f, omega);
+    ib = (MOCK_ADC_MIDDLE_POINT * AMPTITUE_PERCENT *
+                   arm_sin_f32(omega - (120.0f - i_phase_shift) * PI / 180.0f) +
+               MOCK_ADC_MIDDLE_POINT) + harmonic_noise(HARMONIC_, omega)
+               + (float32_t)get_noise_val() + harmonic_noise(HARMONIC_ * 3.0f, omega);
+    vc = (MOCK_ADC_MIDDLE_POINT * AMPTITUE_PERCENT *
+                   arm_sin_f32(omega + 120.0f * PI / 180.0f) +
+               MOCK_ADC_MIDDLE_POINT) + harmonic_noise(HARMONIC_, omega) +
+              (float32_t)get_noise_val() + harmonic_noise(HARMONIC_ * 3.0f, omega);
+    ic = (MOCK_ADC_MIDDLE_POINT * AMPTITUE_PERCENT *
+                   arm_sin_f32(omega + (120.0f + i_phase_shift) * PI / 180.0f) +
+               MOCK_ADC_MIDDLE_POINT) + harmonic_noise(HARMONIC_, omega) +
+              (float32_t)get_noise_val() + harmonic_noise(HARMONIC_ * 3.0f, omega);
+    omega += delta_omega;
+    if (omega > PI) omega -= (2.0f * PI);
+
+    /** Truncate to 12-bit */
+    clamp(&va, 0.0f, (float32_t)MOCK_ADC_MAX);
+    clamp(&vb, 0.0f, (float32_t)MOCK_ADC_MAX);
+    clamp(&vc, 0.0f, (float32_t)MOCK_ADC_MAX);
+    clamp(&ia, 0.0f, (float32_t)MOCK_ADC_MAX);
+    clamp(&ib, 0.0f, (float32_t)MOCK_ADC_MAX);
+    clamp(&ic, 0.0f, (float32_t)MOCK_ADC_MAX);
+
+    buf[i * METER_PHASE_COUNT * METER_SIGNAL_COUNT + 0] = (uint16_t)va;
+    buf[i * METER_PHASE_COUNT * METER_SIGNAL_COUNT + 1] = (uint16_t)ia;
+    buf[i * METER_PHASE_COUNT * METER_SIGNAL_COUNT + 2] = (uint16_t)vb;
+    buf[i * METER_PHASE_COUNT * METER_SIGNAL_COUNT + 3] = (uint16_t)ib;
+    buf[i * METER_PHASE_COUNT * METER_SIGNAL_COUNT + 4] = (uint16_t)vc;
+    buf[i * METER_PHASE_COUNT * METER_SIGNAL_COUNT + 5] = (uint16_t)ic;
+  }
+}
+
+/**
+ * @brief Init FreeRTOS task for generating mock signal data, and the callback
+ * will be called after each period of signal generation, so that we can update
+ * the signal data for testing DSP processing code without real ADC data.
  *
  * @param periodMs Period in milliseconds
- * @param callback Callback function to be called after each period of signal generation, can be NULL if not needed
+ * @param callback Callback function to be called after each period of signal
+ * generation, can be NULL if not needed
  */
-void mockSignalGenInit(uint32_t periodMs, mockSigCallback_t htCallback, mockSigCallback_t tcCallback)
-{
-    if (htCallback)
-    {
-        mockDMAConfig.htCallback = htCallback;
-    }
+void mock_sin_gen_init(float32_t f0, float32_t fs, void (*htCallback)(),
+                       void (* tcCallback)()) {
+  if (htCallback) {
+    mock_DMA_cfg.htCallback = htCallback;
+  }
 
-    if (tcCallback)
-    {
-        mockDMAConfig.tcCallback = tcCallback;
-    }
+  if (tcCallback) {
+    mock_DMA_cfg.tcCallback = tcCallback;
+  }
 
-    mockDMAConfig.signalPeriod = periodMs;
+  mock_sin.f0 = f0;
+  mock_sin.fs = fs;
+  mock_sin.f0_target = f0;
+  mock_sin.step = 0.0f;
 
-    xTaskCreateStatic(
-        _mockTask,
-        "MockSignalGen",
-        APP_DEFAULT_TASK_STACK_SIZE,
-        NULL,
-        APP_DEFAULT_TASK_PRIORITY,
-        mock_task_stack,
-        &mock_task_buffer);
+  mock_DMA_cfg.signalPeriod = (uint32_t)(1000.0f / f0);
+
+  xTaskCreateStatic(_mock_task, "MockSignalGen", APP_DEFAULT_TASK_STACK_SIZE,
+                    NULL, APP_DEFAULT_TASK_PRIORITY, mock_task_stack,
+                    &mock_task_buffer);
 }
 
 /**
- * @brief Mock task, call callback after period of time, and then delay until next period
- * Should be used for generating mock signal data, and the callback should be used for
- * updating the signal data, so that we can test the DSP processing code without real ADC data.
+ * @brief Mock task, call callback after period of time, and then delay until
+ * next period Should be used for generating mock signal data, and the callback
+ * should be used for updating the signal data, so that we can test the DSP
+ * processing code without real ADC data.
  *
  * @param pvParameters Unused parameter for task, can be NULL
  */
-static void _mockTask(void *pvParameters)
-{
-    TickType_t lastWakeTime = xTaskGetTickCount();
-    /** Voltage phase a */
-    mockSinGen(mockDMAConfig.bufPointer,
-               METER_PHASE_COUNT * METER_SIGNAL_COUNT * METER_SAMPLES_PER_CYCLE,
-               METER_SIGNAL_COUNT * METER_PHASE_COUNT,
-               METER_SAMPLES_PER_CYCLE,
-               0.0f);
-    /** Current phase a */
-    mockSinGen(mockDMAConfig.bufPointer + 1,
-               METER_PHASE_COUNT * METER_SIGNAL_COUNT * METER_SAMPLES_PER_CYCLE,
-               METER_SIGNAL_COUNT * METER_PHASE_COUNT,
-               METER_SAMPLES_PER_CYCLE,
-               0.0f);
-
-    /** Voltage phase b */
-    mockSinGen(mockDMAConfig.bufPointer + 2,
-               METER_PHASE_COUNT * METER_SIGNAL_COUNT * METER_SAMPLES_PER_CYCLE,
-               METER_SIGNAL_COUNT * METER_PHASE_COUNT,
-               METER_SAMPLES_PER_CYCLE,
-               120.0f);
-    /** Current phase b */
-    mockSinGen(mockDMAConfig.bufPointer + 3,
-               METER_PHASE_COUNT * METER_SIGNAL_COUNT * METER_SAMPLES_PER_CYCLE,
-               METER_SIGNAL_COUNT * METER_PHASE_COUNT,
-               METER_SAMPLES_PER_CYCLE,
-               120.0f);
-
-    /** Voltage phase c */
-    mockSinGen(mockDMAConfig.bufPointer + 4,
-               METER_PHASE_COUNT * METER_SIGNAL_COUNT * METER_SAMPLES_PER_CYCLE,
-               METER_SIGNAL_COUNT * METER_PHASE_COUNT,
-               METER_SAMPLES_PER_CYCLE,
-               240.0f);
-    /** Current phase c */
-    mockSinGen(mockDMAConfig.bufPointer + 5,
-               METER_PHASE_COUNT * METER_SIGNAL_COUNT * METER_SAMPLES_PER_CYCLE,
-               METER_SIGNAL_COUNT * METER_PHASE_COUNT,
-               METER_SAMPLES_PER_CYCLE,
-               240.0f);
-    while (1)
-    {
-        switch (mockDMAConfig.nextInt)
-        {
-        case HT:
-        {
-            if (mockDMAConfig.htCallback)
-                mockDMAConfig.htCallback();
-            mockDMAConfig.nextInt = TC;
-        }
-        break;
-
-        case TC:
-        {
-            if (mockDMAConfig.tcCallback)
-                mockDMAConfig.tcCallback();
-            mockDMAConfig.nextInt = HT;
-        }
-        break;
-
-        default:
-            break;
-        }
-
-        vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(mockDMAConfig.signalPeriod));
+static void _mock_task(void* pvParameters) {
+  TickType_t lastWakeTime = xTaskGetTickCount();
+  while (1) {
+    if (mock_sin.f0 > mock_sin.f0_target) {
+      mock_sin.f0 -= mock_sin.step;
+    } else if (mock_sin.f0 < mock_sin.f0_target) {
+      mock_sin.f0 += mock_sin.step;
+    } else {
     }
+
+    switch (mock_DMA_cfg.next_int) {
+      case HT: {
+        mock_DMA_cfg.start_ptr = mock_DMA_cfg.buf_pointer;
+        mock_sin_gen_ui_3_p(mock_DMA_cfg.start_ptr, mock_DMA_cfg.length / 2,
+                               mock_sin.f0, mock_sin.fs, 0.0f);
+        if (mock_DMA_cfg.htCallback) mock_DMA_cfg.htCallback();
+        mock_DMA_cfg.next_int = TC;
+      } break;
+
+      case TC: {
+        mock_DMA_cfg.start_ptr =
+        mock_DMA_cfg.buf_pointer + mock_DMA_cfg.length / 2;
+        mock_sin_gen_ui_3_p(mock_DMA_cfg.start_ptr, mock_DMA_cfg.length / 2,
+                               mock_sin.f0, mock_sin.fs, 0.0f);
+        if (mock_DMA_cfg.tcCallback) mock_DMA_cfg.tcCallback();
+        mock_DMA_cfg.next_int = HT;
+      } break;
+
+      default:
+        break;
+    }
+
+    vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(mock_DMA_cfg.signalPeriod));
+  }
 }
 
-void mockDMAInit(uint16_t *bufPointer, uint32_t length, uint8_t halfCpltInt, uint8_t cpltInt)
-{
-    (void)halfCpltInt;
-    (void)cpltInt;
-    mockDMAConfig.bufPointer = bufPointer;
-    mockDMAConfig.length = length;
+void mock_DMA_init(uint16_t* buf_pointer, uint32_t length, uint8_t halfCpltInt,
+                 uint8_t cpltInt) {
+  (void)halfCpltInt;
+  (void)cpltInt;
+  mock_DMA_cfg.buf_pointer = buf_pointer;
+  mock_DMA_cfg.length = length;
+}
+
+void mock_timer_update_arr(uint32_t arr) {
+  mock_sin.fs = (float32_t)DEFAULT_TIMER_CLOCK / (float32_t)arr;
+}
+
+void mock_change_frequency(float32_t targetF, float32_t step) {
+  mock_sin.f0_target = targetF;
+  mock_sin.step = step;
+  mock_DMA_cfg.signalPeriod = (uint32_t)1000.0f / targetF;
 }

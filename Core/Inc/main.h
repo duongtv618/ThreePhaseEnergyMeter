@@ -31,6 +31,7 @@ extern "C" {
 
 #include "stm32f4xx_ll_adc.h"
 #include "stm32f4xx_ll_dma.h"
+#include "stm32f4xx_ll_i2c.h"
 #include "stm32f4xx_ll_iwdg.h"
 #include "stm32f4xx_ll_rcc.h"
 #include "stm32f4xx_ll_bus.h"
@@ -74,6 +75,7 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define B1_Pin LL_GPIO_PIN_13
 #define B1_GPIO_Port GPIOC
+#define B1_EXTI_IRQn EXTI15_10_IRQn
 #define USART_TX_Pin LL_GPIO_PIN_2
 #define USART_TX_GPIO_Port GPIOA
 #define USART_RX_Pin LL_GPIO_PIN_3

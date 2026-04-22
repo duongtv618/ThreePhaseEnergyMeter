@@ -3,4 +3,4 @@
 
 void comm_init(void);
 
-#endif // COMM_H
+#endif  // COMM_H

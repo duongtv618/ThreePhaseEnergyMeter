@@ -3,10 +3,10 @@
 
 #include "share_types.h"
 
-
-extern meterData_t meterData;
+extern struct meter_data_s meterData;
 
 /* Function Prototypes */
 void app_init(void);
+void app_start(void);
 
 #endif /* APP_H */

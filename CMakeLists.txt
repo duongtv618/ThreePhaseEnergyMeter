@@ -53,17 +53,26 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "User/app/src/led_blink.c"
     "User/app/src/comm.c"
     "User/app/src/uart_dma.c"
-    "User/dsp/src/dsp.c"
-    "User/dsp/src/pll.c"
+    "User/lib/src/dsp.c"
+    "User/lib/src/pll.c"
+    "User/lib/src/calib.c"
     "User/mock/src/mock.c"
+    "User/common/src/share_data.c"
+    "User/sup/src/serial_plot.c"
+    "User/common/src/ema.c"
+    "User/lib/src/modbus_rtu.c"
+    "User/lib/src/meter_register.c"
+    "User/common/src/maf.c"
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     "User/app/inc"
-    "User/dsp/inc"
+    "User/lib/inc"
     "User/mock/inc"
+    "User/common/inc"
+    "User/sup/inc"
 )
 
 # Add project symbols (macros)

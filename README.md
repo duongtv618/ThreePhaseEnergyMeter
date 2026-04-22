@@ -1,4 +1,4 @@
-# 3-Phase Energy Meter
+# 3-Phase Power Meter
 
 A comprehensive STM32-based energy metering system for three-phase electrical installations, providing accurate measurement of voltage, current, power, and energy consumption.
 
@@ -25,14 +25,14 @@ A comprehensive STM32-based energy metering system for three-phase electrical in
 ## Software Stack
 
 - STM32CubeIDE / STM32CubeMX
-- HAL (Hardware Abstraction Layer)
-- Real-time operating system (Optional: FreeRTOS)
-- C/C++
+- LL (Hardware Abstraction Layer)
+- Real-time operating system: FreeRTOS)
+- C
 
 ## Installation & Setup
 
 1. Clone the repository
-2. Open project in STM32CubeIDE
+2. Open project in VSCode
 3. Configure hardware peripherals (ADC, UART, RTC)
 4. Build and flash to STM32 device
 
@@ -47,7 +47,7 @@ The meter continuously monitors three phases and provides:
 ## Communications
 
 - UART: Data transmission to external monitoring systems
-- Optional: Ethernet/WiFi module for remote monitoring
+- Modbus: For industrial communication
 
 ## License
 
