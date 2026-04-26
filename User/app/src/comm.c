@@ -1,9 +1,8 @@
 #include "comm.h"
-
+#include "app_cfg.h"
 #include <string.h>
 
 #include "FreeRTOS.h"
-#include "app_cfg.h"
 #include "share_data.h"
 #include "share_types.h"
 #include "task.h"
@@ -38,7 +37,9 @@ static struct _commTask_s {
 static void comm_task(void* params);
 static char* itoa(int32_t value, char* str, int32_t base);
 static char* ftoa(float32_t value, char* str, int digit);
+#ifdef USE_UART_LOG
 static void sendData(void);
+#endif
 
 /**
  * @brief Comm task
@@ -56,13 +57,14 @@ static void comm_task(void* params) {
     //   uart_dma_write((uint8_t*)meterNotRunningMsg, strlen(meterNotRunningMsg));
     // }
 
+    // vTaskDelayUntil(&lastWakeTime,
+    //                 pdMS_TO_TICKS(1000));  // Adjust delay as needed
+
     xTaskNotifyWait(0, 0x00, NULL, portMAX_DELAY);
     meter_data = shdat_get_meter_data();
     meter_update_registers(&meter_data);
     mb_poll();
-
-    // vTaskDelayUntil(&lastWakeTime,
-    //                 pdMS_TO_TICKS(1000));  // Adjust delay as needed
+    calib_poll();
   }
 }
 
@@ -146,6 +148,7 @@ static char* itoa(int32_t value, char* str, int32_t base) {
   return str;
 }
 
+#ifdef USE_UART_LOG
 static void sendData(void) {
   static char msg[64];
   struct meter_data_s meter_data;
@@ -249,3 +252,4 @@ static void sendData(void) {
   uart_dma_write((uint8_t*)itoa(meter_data.energy_hWh, msg, 10), strlen(msg));
   uart_dma_write((uint8_t*)CRNL, strlen(CRNL));
 }
+#endif

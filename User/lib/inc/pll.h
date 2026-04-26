@@ -41,7 +41,7 @@ struct pll_s{
   /** Current frequency */
   float32_t fre;
   /** Lock status */
-  uint8_t locked;
+  uint16_t locked;
   /** MAF for frequency */
   struct maf_s q_maf;
 };

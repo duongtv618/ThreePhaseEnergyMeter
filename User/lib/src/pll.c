@@ -27,12 +27,12 @@
 #define ABS(x) (x < 0.0f ? (x * -1.0f) : x)
 
 
-struct dsogi_s {
-  float32_t b0, b2, a1, a2;
-  float32_t x1, x2, y1, y2;
-  float32_t q1, q2;
-  float32_t out_alpha, out_beta;
-};
+// struct dsogi_s {
+//   float32_t b0, b2, a1, a2;
+//   float32_t x1, x2, y1, y2;
+//   float32_t q1, q2;
+//   float32_t out_alpha, out_beta;
+// };
 
 static const float32_t OMEGA_STEP = 2.0f * PI / 128.0f;
 
@@ -40,9 +40,9 @@ static void pll_timer_update_arr(uint32_t newARR);
 // static uint32_t PLL_TimerGetARR(void);
 
 #ifdef DSP_USE_FLOAT
-static inline void DSOGI_update(struct dsogi_s* s, float32_t input);
+// static inline void DSOGI_update(struct dsogi_s* s, float32_t input);
 static inline void SOGI_Update(struct pll_s* pll, float32_t vin, float32_t Ts);
-static void SOGI_Update_Coeffs(struct dsogi_s* s, float32_t omega_pll, float32_t fs);
+// static void SOGI_Update_Coeffs(struct dsogi_s* s, float32_t omega_pll, float32_t fs);
 
 /**
  * @brief SOGI update
@@ -64,37 +64,37 @@ static inline void SOGI_Update(struct pll_s* pll, float32_t vin, float32_t Ts) {
   pll->SOGI.beta += OMEGA_STEP * last_alpha;             // Then v beta
 }
 
-static inline void DSOGI_update(struct dsogi_s* s, float32_t input) {
-  float32_t v_alpha = s->b0*input + s->b2*s->x2 - s->a1*s->y1 - s->a2*s->y2;
-  float32_t x = (s->b0 / 1.41421356f) * (s->b0 / 1.41421356f / 2.0f);
-  float32_t v_beta = (s->b0 * 0.5f * x) * (input + 2.0f * s->x1 + s->x2) - s->a1 * s->q1 - s->a2 * s->q2;
+// static inline void DSOGI_update(struct dsogi_s* s, float32_t input) {
+//   float32_t v_alpha = s->b0*input + s->b2*s->x2 - s->a1*s->y1 - s->a2*s->y2;
+//   float32_t x = (s->b0 / 1.41421356f) * (s->b0 / 1.41421356f / 2.0f);
+//   float32_t v_beta = (s->b0 * 0.5f * x) * (input + 2.0f * s->x1 + s->x2) - s->a1 * s->q1 - s->a2 * s->q2;
 
-  s->x2 = s->x1;
-    s->x1 = input;
+//   s->x2 = s->x1;
+//     s->x1 = input;
     
-    s->y2 = s->y1;
-    s->y1 = v_alpha;
+//     s->y2 = s->y1;
+//     s->y1 = v_alpha;
     
-    s->q2 = s->q1;
-    s->q1 = v_beta;
-    s->out_alpha = v_alpha;
-    s->out_beta = v_beta;
-}
+//     s->q2 = s->q1;
+//     s->q1 = v_beta;
+//     s->out_alpha = v_alpha;
+//     s->out_beta = v_beta;
+// }
 
-static void SOGI_Update_Coeffs(struct dsogi_s* s, float32_t omega_pll, float32_t fs) {
-    float32_t Ts = 1.0f / fs;
-    float32_t k = 1.41421356f;
-    float32_t x = omega_pll * Ts;
-    float32_t x2 = x * x;
-    float32_t kx = k * x;
+// static void SOGI_Update_Coeffs(struct dsogi_s* s, float32_t omega_pll, float32_t fs) {
+//     float32_t Ts = 1.0f / fs;
+//     float32_t k = 1.41421356f;
+//     float32_t x = omega_pll * Ts;
+//     float32_t x2 = x * x;
+//     float32_t kx = k * x;
     
-    float32_t A = 4.0f + 2.0f * kx + x2;
+//     float32_t A = 4.0f + 2.0f * kx + x2;
     
-    s->b0 = (2.0f * kx) / A;
-    s->b2 = -(s->b0);
-    s->a1 = (2.0f * x2 - 8.0f) / A;
-    s->a2 = (4.0f - 2.0f * kx + x2) / A;
-}
+//     s->b0 = (2.0f * kx) / A;
+//     s->b2 = -(s->b0);
+//     s->a1 = (2.0f * x2 - 8.0f) / A;
+//     s->a2 = (4.0f - 2.0f * kx + x2) / A;
+// }
 
 /**
  * @brief

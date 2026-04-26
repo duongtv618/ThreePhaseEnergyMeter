@@ -22,6 +22,7 @@
 #include "arm_math.h"
 #include "calib.h"
 #include "dsp.h"
+#include "led_blink.h"
 #include "main.h"
 #include "mock.h"
 #include "pll.h"
@@ -30,9 +31,9 @@
 #include "task.h"
 #include "uart_dma.h"
 
-#define pulse_trigger() \
-  {                     \
-  }
+#define pulse_trigger() led_trigger()
+
+#define ABS(x) (x < 0.0f ? (x * -1.0f) : x)
 
 #define HT_CALLBACK_VAL 0u
 #define TC_CALLBACK_VAL 1u
@@ -130,8 +131,8 @@ void adc_sample_init(void) {
 void adc_sample_task(void* pvParameters) {
   /* ADC initialization code goes here */
   adc_DMA_init();
-  dsp_coef = calib_get_dsp_coef();
   struct calib_starting_current_voltage threshhold = calib_get_threshold();
+  calib_init();
   pll_init_1p(&dsp_dat_buf.pll_1p, (float32_t)METER_MAIN_FREQUENCY,
               (float32_t)METER_MAIN_FREQUENCY * METER_SAMPLES_PER_CYCLE,
               ADC_TIMER_CLOCK);
@@ -141,12 +142,15 @@ void adc_sample_task(void* pvParameters) {
 
   /** If we want to use mock data, we can init the mock signal generator here */
 #ifdef DATA_USE_MOCK_DATA
-  mock_sin_gen_init((float32_t)60.0f,
+  mock_sin_gen_init((float32_t)METER_START_FREQUENCY,
                     (float32_t)METER_MAIN_FREQUENCY * METER_SAMPLES_PER_CYCLE,
                     adc_half_conv_cplt_callback, adc_full_conv_cplt_callback);
 #endif
 
   while (1) {
+    uint32_t start_time = DWT->CYCCNT;  // For time calculation
+    dsp_coef = calib_get_dsp_coef();
+
     uint32_t noti_val;
     uint16_t (*adc_buf_ptr)[METER_PHASE_COUNT][METER_SIGNAL_COUNT];
     xTaskNotifyWait(1, 1, &noti_val,
@@ -160,20 +164,16 @@ void adc_sample_task(void* pvParameters) {
       while (1);  // Err here
     }
 
-    uint32_t start_time = DWT->CYCCNT;  // For time calculation
-
 #ifdef DSP_USE_FLOAT
     /** Take processible data from adc buffer */
     for (size_t i = 0; i < METER_SAMPLES_PER_CYCLE; i++) {
       for (size_t j = 0; j < METER_PHASE_COUNT; j++) {
-        dsp_dat_buf.vol_buf[j][i] =
-            (float32_t)adc_buf_ptr[i][j][VOLTAGE_POS] - (float32_t)dsp_coef.phase_coef[j].v_offset;
-        dsp_dat_buf.cur_buf[j][i] =
-            (float32_t)adc_buf_ptr[i][j][CURRENT_POS] - (float32_t)dsp_coef.phase_coef[j].i_offset;
+        dsp_dat_buf.vol_buf[j][i] = (float32_t)adc_buf_ptr[i][j][VOLTAGE_POS] -
+                                    (float32_t)dsp_coef.phase_coef[j].v_offset;
+        dsp_dat_buf.cur_buf[j][i] = (float32_t)adc_buf_ptr[i][j][CURRENT_POS] -
+                                    (float32_t)dsp_coef.phase_coef[j].i_offset;
       }
     }
-
-    float32_t mean_v, mean_c;
     /** Convert adc value to [-1:1] */
     const float32_t to_per_unit = 1.0f / ADC_EXPECT_MAX_PEAK;
 
@@ -321,11 +321,39 @@ void adc_sample_task(void* pvParameters) {
         shdat_wrt_meter_data(&meter_data);
         break;
       case METER_STATE_RUNNING_3PHASE: {
-        static uint8_t run_once = 0;
-        if (run_once == 0) {
-          run_once = 1;
-          mock_change_frequency(60.0f, 0.005f);
+        static enum {
+          FRE_50HZ,
+          FRE_CHANGE_UP,
+          FRE_CHANGE_DOWN,
+          FRE_60HZ,
+        } cur_fre = (METER_START_FREQUENCY == 60U) ? FRE_60HZ : FRE_50HZ;
+
+        switch (cur_fre) {
+          case FRE_50HZ:
+            cur_fre = FRE_CHANGE_UP;
+            mock_change_frequency(60.0f, 0.001f);
+            break;
+
+          case FRE_CHANGE_UP:
+            if (ABS(dsp_dat_buf.pll_3p.fre - 60.0f) < 0.01f) {
+              cur_fre = FRE_60HZ;
+            }
+            break;
+
+          case FRE_CHANGE_DOWN:
+            if (ABS(dsp_dat_buf.pll_3p.fre - 50.0f) < 0.01f) {
+              cur_fre = FRE_50HZ;
+            }
+            break;
+
+          case FRE_60HZ:
+            cur_fre = FRE_CHANGE_DOWN;
+            mock_change_frequency(50.0f, 0.001f);
+            break;
+          default:
+            break;
         }
+
         energy_accum(&meter_data, ON, ON, ON);
         shdat_wrt_meter_data(&meter_data);
       } break;

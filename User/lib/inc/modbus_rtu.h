@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include "meter_register.h"
+#include "calib.h"
 
 /* LL layer — no HAL handle needed */
 #include "stm32f4xx_ll_usart.h"
@@ -16,14 +17,6 @@ extern "C" {
 #include "task.h"
 #include <stdint.h>
 #include <stdbool.h>
-
-/* Linux kernel-style fixed-width type aliases */
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef int8_t   s8;
-typedef int16_t  s16;
-typedef int32_t  s32;
 
 /* ============================================================
  *  MODBUS RTU MODULE — STM32F411 / USART2 + DMA (LL Layer)
@@ -59,7 +52,7 @@ typedef int32_t  s32;
 #define MODBUS_COIL_COUNT           64
 #define MODBUS_DISCRETE_COUNT       64
 #define MODBUS_INPUT_REG_COUNT      32
-#define MODBUS_HOLDING_REG_COUNT    128
+#define MODBUS_HOLDING_REG_COUNT    (METER_REG_COUNT + CALIB_REG_COUNT)
 
 /* T3.5 inter-frame silence (µs) */
 #if (MODBUS_BAUD_RATE <= 19200UL)
@@ -97,10 +90,10 @@ enum mb_status {
 };
 
 struct mb_data_store {
-	u8  coils[MODBUS_COIL_COUNT / 8 + 1];
-	u8  discrete_inputs[MODBUS_DISCRETE_COUNT / 8 + 1];
-	u16 input_regs[MODBUS_INPUT_REG_COUNT];
-	u16 holding_regs[MODBUS_HOLDING_REG_COUNT];
+	uint8_t  coils[MODBUS_COIL_COUNT / 8 + 1];
+	uint8_t  discrete_inputs[MODBUS_DISCRETE_COUNT / 8 + 1];
+	uint16_t input_regs[MODBUS_INPUT_REG_COUNT];
+	uint16_t holding_regs[MODBUS_HOLDING_REG_COUNT];
 };
 
 /* ---------- Public API ------------------------------------- */
@@ -133,17 +126,21 @@ void mb_poll(void);
 struct mb_data_store *mb_get_data_store(void);
 
 /* Register accessor helpers */
-void mb_set_coil(u16 addr, bool val);
-bool mb_get_coil(u16 addr);
+void mb_set_coil(uint16_t addr, bool val);
+bool mb_get_coil(uint16_t addr);
 
-void mb_set_discrete_input(u16 addr, bool val);
-bool mb_get_discrete_input(u16 addr);
+void mb_set_discrete_input(uint16_t addr, bool val);
+bool mb_get_discrete_input(uint16_t addr);
 
-void mb_set_input_reg(u16 addr, u16 val);
-u16  mb_get_input_reg(u16 addr);
+void mb_set_input_reg(uint16_t addr, uint16_t val);
+uint16_t  mb_get_input_reg(uint16_t addr);
 
-void mb_set_holding_reg(u16 addr, u16 val);
-u16  mb_get_holding_reg(u16 addr);
+void mb_set_holding_reg(uint16_t addr, uint16_t val);
+uint16_t  mb_get_holding_reg(uint16_t addr);
+
+/** Helpers for float32 encoding (big-endian word order) */
+void mb_set_float(uint16_t addr, float32_t val);
+float32_t mb_get_float(uint16_t addr);
 
 /* ---------- IRQ handlers — place in stm32f4xx_it.c ----------
  *

@@ -39,11 +39,11 @@ enum mb_state {
  * ============================================================ */
 static volatile enum mb_state state = mb_state_idle;
 static volatile bool frame_ready = false;
-static volatile u16 rx_len = 0;
+static volatile uint16_t rx_len = 0;
 
-static u8 dma_rx_buf[MODBUS_RX_BUF_SIZE]; /* DMA circular buffer */
-static u8 rx_buf[MODBUS_RX_BUF_SIZE];     /* frame snapshot      */
-static u8 tx_buf[MODBUS_TX_BUF_SIZE];     /* reply buffer        */
+static uint8_t dma_rx_buf[MODBUS_RX_BUF_SIZE]; /* DMA circular buffer */
+static uint8_t rx_buf[MODBUS_RX_BUF_SIZE];     /* frame snapshot      */
+static uint8_t tx_buf[MODBUS_TX_BUF_SIZE];     /* reply buffer        */
 
 static struct mb_data_store data_store;
 
@@ -52,7 +52,7 @@ static TaskHandle_t handle;
 /* ============================================================
  *  CRC-16/Modbus lookup table
  * ============================================================ */
-static const u16 crc_lut[256] = {
+static const uint16_t crc_lut[256] = {
     0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241, 0xC601,
     0x06C0, 0x0780, 0xC741, 0x0500, 0xC5C1, 0xC481, 0x0440, 0xCC01, 0x0CC0,
     0x0D80, 0xCD41, 0x0F00, 0xCFC1, 0xCE81, 0x0E40, 0x0A00, 0xCAC1, 0xCB81,
@@ -84,8 +84,8 @@ static const u16 crc_lut[256] = {
     0x4100, 0x81C1, 0x8081, 0x4040,
 };
 
-static u16 calc_crc16(const u8* buf, u16 len) {
-  u16 crc = 0xFFFF;
+static uint16_t calc_crc16(const uint8_t* buf, uint16_t len) {
+  uint16_t crc = 0xFFFF;
 
   while (len--) crc = (crc >> 8) ^ crc_lut[(crc ^ *buf++) & 0xFF];
 
@@ -135,7 +135,7 @@ static void dma_init(void) {
   LL_DMA_DisableFifoMode(MODBUS_DMA, MODBUS_DMA_RX_STREAM);
   LL_DMA_SetPeriphAddress(MODBUS_DMA, MODBUS_DMA_RX_STREAM,
                           LL_USART_DMA_GetRegAddr(MODBUS_USARTx));
-  LL_DMA_SetMemoryAddress(MODBUS_DMA, MODBUS_DMA_RX_STREAM, (u32)dma_rx_buf);
+  LL_DMA_SetMemoryAddress(MODBUS_DMA, MODBUS_DMA_RX_STREAM, (uint32_t)dma_rx_buf);
   LL_DMA_SetDataLength(MODBUS_DMA, MODBUS_DMA_RX_STREAM, MODBUS_RX_BUF_SIZE);
   // LL_DMA_EnableIT_TC(MODBUS_DMA, MODBUS_DMA_RX_STREAM);
 
@@ -200,15 +200,15 @@ static void usart_init(void) {
 static void start_rx_dma(void) {
   LL_DMA_DisableStream(MODBUS_DMA, MODBUS_DMA_RX_STREAM);
   while (LL_DMA_IsEnabledStream(MODBUS_DMA, MODBUS_DMA_RX_STREAM));
-  LL_DMA_SetMemoryAddress(MODBUS_DMA, MODBUS_DMA_RX_STREAM, (u32)dma_rx_buf);
+  LL_DMA_SetMemoryAddress(MODBUS_DMA, MODBUS_DMA_RX_STREAM, (uint32_t)dma_rx_buf);
   LL_DMA_SetDataLength(MODBUS_DMA, MODBUS_DMA_RX_STREAM, MODBUS_RX_BUF_SIZE);
   LL_DMA_EnableStream(MODBUS_DMA, MODBUS_DMA_RX_STREAM);
 }
 
-static void start_tx_dma(u16 len) {
+static void start_tx_dma(uint16_t len) {
   LL_DMA_DisableStream(MODBUS_DMA, MODBUS_DMA_TX_STREAM);
   while (LL_DMA_IsEnabledStream(MODBUS_DMA, MODBUS_DMA_TX_STREAM));
-  LL_DMA_SetMemoryAddress(MODBUS_DMA, MODBUS_DMA_TX_STREAM, (u32)tx_buf);
+  LL_DMA_SetMemoryAddress(MODBUS_DMA, MODBUS_DMA_TX_STREAM, (uint32_t)tx_buf);
   LL_DMA_SetDataLength(MODBUS_DMA, MODBUS_DMA_TX_STREAM, len);
   LL_DMA_EnableStream(MODBUS_DMA, MODBUS_DMA_TX_STREAM);
 }
@@ -227,29 +227,29 @@ __attribute__((weak)) void mb_enable_rx(void) {
 /* ============================================================
  *  Bit-level helpers for coils / discrete inputs
  * ============================================================ */
-static inline void set_bit_val(u8* arr, u16 idx, bool val) {
+static inline void set_bit_val(uint8_t* arr, uint16_t idx, bool val) {
   if (val)
     arr[idx >> 3] |= (1u << (idx & 7));
   else
     arr[idx >> 3] &= ~(1u << (idx & 7));
 }
 
-static inline bool get_bit_val(const u8* arr, u16 idx) {
+static inline bool get_bit_val(const uint8_t* arr, uint16_t idx) {
   return (arr[idx >> 3] >> (idx & 7)) & 1u;
 }
 
 /* ============================================================
  *  Exception response builder
  * ============================================================ */
-static u16 build_exception(u8 fc, u8 ex_code) {
-  u16 crc;
+static uint16_t build_exception(uint8_t fc, uint8_t ex_code) {
+  uint16_t crc;
 
   tx_buf[0] = MODBUS_SLAVE_ADDR;
   tx_buf[1] = fc | 0x80;
   tx_buf[2] = ex_code;
   crc = calc_crc16(tx_buf, 3);
-  tx_buf[3] = (u8)(crc);
-  tx_buf[4] = (u8)(crc >> 8);
+  tx_buf[3] = (uint8_t)(crc);
+  tx_buf[4] = (uint8_t)(crc >> 8);
 
   return 5;
 }
@@ -260,18 +260,18 @@ static u16 build_exception(u8 fc, u8 ex_code) {
  * ============================================================ */
 
 /* FC 01 — Read Coils */
-static u16 handle_fc01(const u8* req) {
-  u16 addr = (u16)(req[2] << 8) | req[3];
-  u16 count = (u16)(req[4] << 8) | req[5];
-  u8 nb, i;
-  u16 crc;
+static uint16_t handle_fc01(const uint8_t* req) {
+  uint16_t addr = (uint16_t)(req[2] << 8) | req[3];
+  uint16_t count = (uint16_t)(req[4] << 8) | req[5];
+  uint8_t nb, i;
+  uint16_t crc;
 
   if (count < 1 || count > 2000)
     return build_exception(FC_READ_COILS, MB_EX_ILLEGAL_DATA_VALUE);
   if ((addr + count) > MODBUS_COIL_COUNT)
     return build_exception(FC_READ_COILS, MB_EX_ILLEGAL_DATA_ADDR);
 
-  nb = (u8)((count + 7) / 8);
+  nb = (uint8_t)((count + 7) / 8);
   tx_buf[0] = MODBUS_SLAVE_ADDR;
   tx_buf[1] = FC_READ_COILS;
   tx_buf[2] = nb;
@@ -282,25 +282,25 @@ static u16 handle_fc01(const u8* req) {
       tx_buf[3 + (i >> 3)] |= (1u << (i & 7));
 
   crc = calc_crc16(tx_buf, 3 + nb);
-  tx_buf[3 + nb] = (u8)(crc);
-  tx_buf[4 + nb] = (u8)(crc >> 8);
+  tx_buf[3 + nb] = (uint8_t)(crc);
+  tx_buf[4 + nb] = (uint8_t)(crc >> 8);
 
-  return (u16)(5 + nb);
+  return (uint16_t)(5 + nb);
 }
 
 /* FC 02 — Read Discrete Inputs */
-static u16 handle_fc02(const u8* req) {
-  u16 addr = (u16)(req[2] << 8) | req[3];
-  u16 count = (u16)(req[4] << 8) | req[5];
-  u8 nb, i;
-  u16 crc;
+static uint16_t handle_fc02(const uint8_t* req) {
+  uint16_t addr = (uint16_t)(req[2] << 8) | req[3];
+  uint16_t count = (uint16_t)(req[4] << 8) | req[5];
+  uint8_t nb, i;
+  uint16_t crc;
 
   if (count < 1 || count > 2000)
     return build_exception(FC_READ_DISCRETE_INPUTS, MB_EX_ILLEGAL_DATA_VALUE);
   if ((addr + count) > MODBUS_DISCRETE_COUNT)
     return build_exception(FC_READ_DISCRETE_INPUTS, MB_EX_ILLEGAL_DATA_ADDR);
 
-  nb = (u8)((count + 7) / 8);
+  nb = (uint8_t)((count + 7) / 8);
   tx_buf[0] = MODBUS_SLAVE_ADDR;
   tx_buf[1] = FC_READ_DISCRETE_INPUTS;
   tx_buf[2] = nb;
@@ -311,17 +311,17 @@ static u16 handle_fc02(const u8* req) {
       tx_buf[3 + (i >> 3)] |= (1u << (i & 7));
 
   crc = calc_crc16(tx_buf, 3 + nb);
-  tx_buf[3 + nb] = (u8)(crc);
-  tx_buf[4 + nb] = (u8)(crc >> 8);
+  tx_buf[3 + nb] = (uint8_t)(crc);
+  tx_buf[4 + nb] = (uint8_t)(crc >> 8);
 
-  return (u16)(5 + nb);
+  return (uint16_t)(5 + nb);
 }
 
 /* FC 03 — Read Holding Registers */
-static u16 handle_fc03(const u8* req) {
-  u16 addr = (u16)(req[2] << 8) | req[3];
-  u16 count = (u16)(req[4] << 8) | req[5];
-  u16 i, len, crc;
+static uint16_t handle_fc03(const uint8_t* req) {
+  uint16_t addr = (uint16_t)(req[2] << 8) | req[3];
+  uint16_t count = (uint16_t)(req[4] << 8) | req[5];
+  uint16_t i, len, crc;
 
   if (count < 1 || count > 125)
     return build_exception(FC_READ_HOLDING_REGS, MB_EX_ILLEGAL_DATA_VALUE);
@@ -330,26 +330,26 @@ static u16 handle_fc03(const u8* req) {
 
   tx_buf[0] = MODBUS_SLAVE_ADDR;
   tx_buf[1] = FC_READ_HOLDING_REGS;
-  tx_buf[2] = (u8)(count * 2);
+  tx_buf[2] = (uint8_t)(count * 2);
 
   for (i = 0; i < count; i++) {
-    tx_buf[3 + i * 2] = (u8)(data_store.holding_regs[addr + i] >> 8);
-    tx_buf[3 + i * 2 + 1] = (u8)(data_store.holding_regs[addr + i]);
+    tx_buf[3 + i * 2] = (uint8_t)(data_store.holding_regs[addr + i] >> 8);
+    tx_buf[3 + i * 2 + 1] = (uint8_t)(data_store.holding_regs[addr + i]);
   }
 
-  len = (u16)(3 + count * 2);
+  len = (uint16_t)(3 + count * 2);
   crc = calc_crc16(tx_buf, len);
-  tx_buf[len] = (u8)(crc);
-  tx_buf[len + 1] = (u8)(crc >> 8);
+  tx_buf[len] = (uint8_t)(crc);
+  tx_buf[len + 1] = (uint8_t)(crc >> 8);
 
   return len + 2;
 }
 
 /* FC 04 — Read Input Registers */
-static u16 handle_fc04(const u8* req) {
-  u16 addr = (u16)(req[2] << 8) | req[3];
-  u16 count = (u16)(req[4] << 8) | req[5];
-  u16 i, len, crc;
+static uint16_t handle_fc04(const uint8_t* req) {
+  uint16_t addr = (uint16_t)(req[2] << 8) | req[3];
+  uint16_t count = (uint16_t)(req[4] << 8) | req[5];
+  uint16_t i, len, crc;
 
   if (count < 1 || count > 125)
     return build_exception(FC_READ_INPUT_REGS, MB_EX_ILLEGAL_DATA_VALUE);
@@ -358,26 +358,26 @@ static u16 handle_fc04(const u8* req) {
 
   tx_buf[0] = MODBUS_SLAVE_ADDR;
   tx_buf[1] = FC_READ_INPUT_REGS;
-  tx_buf[2] = (u8)(count * 2);
+  tx_buf[2] = (uint8_t)(count * 2);
 
   for (i = 0; i < count; i++) {
-    tx_buf[3 + i * 2] = (u8)(data_store.input_regs[addr + i] >> 8);
-    tx_buf[3 + i * 2 + 1] = (u8)(data_store.input_regs[addr + i]);
+    tx_buf[3 + i * 2] = (uint8_t)(data_store.input_regs[addr + i] >> 8);
+    tx_buf[3 + i * 2 + 1] = (uint8_t)(data_store.input_regs[addr + i]);
   }
 
-  len = (u16)(3 + count * 2);
+  len = (uint16_t)(3 + count * 2);
   crc = calc_crc16(tx_buf, len);
-  tx_buf[len] = (u8)(crc);
-  tx_buf[len + 1] = (u8)(crc >> 8);
+  tx_buf[len] = (uint8_t)(crc);
+  tx_buf[len + 1] = (uint8_t)(crc >> 8);
 
   return len + 2;
 }
 
 /* FC 05 — Write Single Coil */
-static u16 handle_fc05(const u8* req) {
-  u16 addr = (u16)(req[2] << 8) | req[3];
-  u16 value = (u16)(req[4] << 8) | req[5];
-  u16 crc;
+static uint16_t handle_fc05(const uint8_t* req) {
+  uint16_t addr = (uint16_t)(req[2] << 8) | req[3];
+  uint16_t value = (uint16_t)(req[4] << 8) | req[5];
+  uint16_t crc;
 
   if (value != 0x0000 && value != 0xFF00)
     return build_exception(FC_WRITE_SINGLE_COIL, MB_EX_ILLEGAL_DATA_VALUE);
@@ -387,17 +387,17 @@ static u16 handle_fc05(const u8* req) {
   set_bit_val(data_store.coils, addr, value == 0xFF00);
   memcpy(tx_buf, req, 6);
   crc = calc_crc16(tx_buf, 6);
-  tx_buf[6] = (u8)(crc);
-  tx_buf[7] = (u8)(crc >> 8);
+  tx_buf[6] = (uint8_t)(crc);
+  tx_buf[7] = (uint8_t)(crc >> 8);
 
   return 8;
 }
 
 /* FC 06 — Write Single Register */
-static u16 handle_fc06(const u8* req) {
-  u16 addr = (u16)(req[2] << 8) | req[3];
-  u16 value = (u16)(req[4] << 8) | req[5];
-  u16 crc;
+static uint16_t handle_fc06(const uint8_t* req) {
+  uint16_t addr = (uint16_t)(req[2] << 8) | req[3];
+  uint16_t value = (uint16_t)(req[4] << 8) | req[5];
+  uint16_t crc;
 
   if (addr >= MODBUS_HOLDING_REG_COUNT)
     return build_exception(FC_WRITE_SINGLE_REG, MB_EX_ILLEGAL_DATA_ADDR);
@@ -405,24 +405,24 @@ static u16 handle_fc06(const u8* req) {
   data_store.holding_regs[addr] = value;
   memcpy(tx_buf, req, 6);
   crc = calc_crc16(tx_buf, 6);
-  tx_buf[6] = (u8)(crc);
-  tx_buf[7] = (u8)(crc >> 8);
+  tx_buf[6] = (uint8_t)(crc);
+  tx_buf[7] = (uint8_t)(crc >> 8);
 
   return 8;
 }
 
 /* FC 0F — Write Multiple Coils */
-static u16 handle_fc0f(const u8* req) {
-  u16 addr = (u16)(req[2] << 8) | req[3];
-  u16 count = (u16)(req[4] << 8) | req[5];
-  u8 nb = req[6];
-  u16 i, crc;
+static uint16_t handle_fc0f(const uint8_t* req) {
+  uint16_t addr = (uint16_t)(req[2] << 8) | req[3];
+  uint16_t count = (uint16_t)(req[4] << 8) | req[5];
+  uint8_t nb = req[6];
+  uint16_t i, crc;
 
   if (count < 1 || count > 1968)
     return build_exception(FC_WRITE_MULTIPLE_COILS, MB_EX_ILLEGAL_DATA_VALUE);
   if ((addr + count) > MODBUS_COIL_COUNT)
     return build_exception(FC_WRITE_MULTIPLE_COILS, MB_EX_ILLEGAL_DATA_ADDR);
-  if (nb != (u8)((count + 7) / 8))
+  if (nb != (uint8_t)((count + 7) / 8))
     return build_exception(FC_WRITE_MULTIPLE_COILS, MB_EX_ILLEGAL_DATA_VALUE);
 
   for (i = 0; i < count; i++)
@@ -436,29 +436,29 @@ static u16 handle_fc0f(const u8* req) {
   tx_buf[4] = req[4];
   tx_buf[5] = req[5];
   crc = calc_crc16(tx_buf, 6);
-  tx_buf[6] = (u8)(crc);
-  tx_buf[7] = (u8)(crc >> 8);
+  tx_buf[6] = (uint8_t)(crc);
+  tx_buf[7] = (uint8_t)(crc >> 8);
 
   return 8;
 }
 
 /* FC 10 — Write Multiple Registers */
-static u16 handle_fc10(const u8* req) {
-  u16 addr = (u16)(req[2] << 8) | req[3];
-  u16 count = (u16)(req[4] << 8) | req[5];
-  u8 nb = req[6];
-  u16 i, crc;
+static uint16_t handle_fc10(const uint8_t* req) {
+  uint16_t addr = (uint16_t)(req[2] << 8) | req[3];
+  uint16_t count = (uint16_t)(req[4] << 8) | req[5];
+  uint8_t nb = req[6];
+  uint16_t i, crc;
 
   if (count < 1 || count > 123)
     return build_exception(FC_WRITE_MULTIPLE_REGS, MB_EX_ILLEGAL_DATA_VALUE);
   if ((addr + count) > MODBUS_HOLDING_REG_COUNT)
     return build_exception(FC_WRITE_MULTIPLE_REGS, MB_EX_ILLEGAL_DATA_ADDR);
-  if (nb != (u8)(count * 2))
+  if (nb != (uint8_t)(count * 2))
     return build_exception(FC_WRITE_MULTIPLE_REGS, MB_EX_ILLEGAL_DATA_VALUE);
 
   for (i = 0; i < count; i++)
     data_store.holding_regs[addr + i] =
-        (u16)(req[7 + i * 2] << 8) | req[7 + i * 2 + 1];
+        (uint16_t)(req[7 + i * 2] << 8) | req[7 + i * 2 + 1];
 
   tx_buf[0] = MODBUS_SLAVE_ADDR;
   tx_buf[1] = FC_WRITE_MULTIPLE_REGS;
@@ -467,8 +467,8 @@ static u16 handle_fc10(const u8* req) {
   tx_buf[4] = req[4];
   tx_buf[5] = req[5];
   crc = calc_crc16(tx_buf, 6);
-  tx_buf[6] = (u8)(crc);
-  tx_buf[7] = (u8)(crc >> 8);
+  tx_buf[6] = (uint8_t)(crc);
+  tx_buf[7] = (uint8_t)(crc >> 8);
 
   return 8;
 }
@@ -477,15 +477,15 @@ static u16 handle_fc10(const u8* req) {
  *  Frame dispatcher
  * ============================================================ */
 static void process_frame(void) {
-  const u8* req = rx_buf;
-  u16 len = rx_len;
-  u16 crc_recv, crc_calc;
-  u8 fc;
-  u16 reply_len = 0;
+  const uint8_t* req = rx_buf;
+  uint16_t len = rx_len;
+  uint16_t crc_recv, crc_calc;
+  uint8_t fc;
+  uint16_t reply_len = 0;
 
   if (len < 4) return;
 
-  crc_recv = (u16)(req[len - 1] << 8) | req[len - 2];
+  crc_recv = (uint16_t)(req[len - 1] << 8) | req[len - 2];
   crc_calc = calc_crc16(req, len - 2);
   if (crc_recv != crc_calc) return;
 
@@ -559,42 +559,78 @@ void mb_poll(void) {
 struct mb_data_store* mb_get_data_store(void) { return &data_store; }
 
 /* Coils */
-void mb_set_coil(u16 addr, bool val) {
+void mb_set_coil(uint16_t addr, bool val) {
   if (addr < MODBUS_COIL_COUNT) set_bit_val(data_store.coils, addr, val);
 }
 
-bool mb_get_coil(u16 addr) {
+bool mb_get_coil(uint16_t addr) {
   return addr < MODBUS_COIL_COUNT ? get_bit_val(data_store.coils, addr) : false;
 }
 
 /* Discrete inputs */
-void mb_set_discrete_input(u16 addr, bool val) {
+void mb_set_discrete_input(uint16_t addr, bool val) {
   if (addr < MODBUS_DISCRETE_COUNT)
     set_bit_val(data_store.discrete_inputs, addr, val);
 }
 
-bool mb_get_discrete_input(u16 addr) {
+bool mb_get_discrete_input(uint16_t addr) {
   return addr < MODBUS_DISCRETE_COUNT
              ? get_bit_val(data_store.discrete_inputs, addr)
              : false;
 }
 
 /* Input registers */
-void mb_set_input_reg(u16 addr, u16 val) {
+void mb_set_input_reg(uint16_t addr, uint16_t val) {
   if (addr < MODBUS_INPUT_REG_COUNT) data_store.input_regs[addr] = val;
 }
 
-u16 mb_get_input_reg(u16 addr) {
+uint16_t mb_get_input_reg(uint16_t addr) {
   return addr < MODBUS_INPUT_REG_COUNT ? data_store.input_regs[addr] : 0;
 }
 
 /* Holding registers */
-void mb_set_holding_reg(u16 addr, u16 val) {
+void mb_set_holding_reg(uint16_t addr, uint16_t val) {
   if (addr < MODBUS_HOLDING_REG_COUNT) data_store.holding_regs[addr] = val;
 }
 
-u16 mb_get_holding_reg(u16 addr) {
+uint16_t mb_get_holding_reg(uint16_t addr) {
   return addr < MODBUS_HOLDING_REG_COUNT ? data_store.holding_regs[addr] : 0;
+}
+
+
+void mb_set_float(uint16_t addr, float32_t val) {
+	uint32_t raw;
+	uint16_t hi, lo;
+
+	/* Type-pun float → u32 without UB */
+	memcpy(&raw, &val, sizeof(raw));
+
+	hi = (uint16_t)(raw >> 16);
+	lo = (uint16_t)(raw & 0xFFFFu);
+
+	/*
+	 * Use mb_set_holding_reg() so values flow through the
+	 * existing Modbus input-register store.
+	 * Swap to mb_set_input_reg() if you want these read-only
+	 * (FC04 only) and reserve holding regs for setpoints.
+	 */
+	mb_set_holding_reg(addr,     hi);
+	mb_set_holding_reg(addr + 1, lo);
+}
+
+float32_t mb_get_float(uint16_t addr) {
+	uint32_t raw;
+	uint16_t hi, lo;
+
+	hi = mb_get_holding_reg(addr);
+	lo = mb_get_holding_reg(addr + 1);
+
+	/* Type-pun u32 → float without UB */
+	memcpy(&raw, &hi, sizeof(hi));
+	raw <<= 16;
+	memcpy(&raw, &lo, sizeof(lo));
+
+	return *(float32_t *)&raw;
 }
 
 /* ============================================================
@@ -609,7 +645,7 @@ u16 mb_get_holding_reg(u16 addr) {
  * Call from USART2_IRQHandler() in stm32f4xx_it.c.
  */
 void mb_usart_irq_handler(void) {
-  u16 ndtr, received;
+  uint16_t ndtr, received;
 
   if (!LL_USART_IsActiveFlag_IDLE(MODBUS_USARTx)) return;
 
@@ -618,8 +654,8 @@ void mb_usart_irq_handler(void) {
   if (state == mb_state_tx) /* ignore RS-485 echo */
     return;
 
-  ndtr = (u16)LL_DMA_GetDataLength(MODBUS_DMA, MODBUS_DMA_RX_STREAM);
-  received = (u16)(MODBUS_RX_BUF_SIZE - ndtr);
+  ndtr = (uint16_t)LL_DMA_GetDataLength(MODBUS_DMA, MODBUS_DMA_RX_STREAM);
+  received = (uint16_t)(MODBUS_RX_BUF_SIZE - ndtr);
 
   if (received == 0) return;
 

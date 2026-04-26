@@ -62,9 +62,12 @@ struct vol_line_s {
 };
 
 struct vol_line_coef_s {
-  float32_t ab;
-  float32_t bc;
-  float32_t ca;
+  float32_t ab_gain;
+  float32_t bc_gain;
+  float32_t ca_gain;
+  float32_t ab_offset;
+  float32_t bc_offset;
+  float32_t ca_offset;
 };
 
 struct meter_data_s {

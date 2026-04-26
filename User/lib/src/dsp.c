@@ -95,9 +95,9 @@ void dsp_process_phase(struct phase_data_s* phase_dat, float32_t* vol_buf,
   phi = phi * 180.0f / PI;
   ui_diff_angel = phase_dat->angle.current - phase_dat->angle.voltage;
   if (ui_diff_angel > 0.0f) {
-    phi += 5.0f;
+    phi += phase_coef.i_phase_shift;
   } else if (ui_diff_angel < 0.0f) {
-    phi -= 5.0f;
+    phi -= phase_coef.i_phase_shift;
   }
   phase_dat->pf = arm_cos_f32(phi * PI / 180.0f);
   phase_dat->act_pwr = phase_dat->app_pwr * phase_dat->pf;
@@ -139,9 +139,9 @@ void dsp_process_vol_line(struct meter_data_s *mdat, struct dsp_coef_s* coef, fl
   arm_sqrt_f32(vbc, &mdat->vol_line.bc);
   arm_sqrt_f32(vca, &mdat->vol_line.ca);
 
-  mdat->vol_line.ab *= coef->vll.ab;
-  mdat->vol_line.bc *= coef->vll.bc;
-  mdat->vol_line.ca *= coef->vll.ca;
+  mdat->vol_line.ab *= coef->vll.ab_gain;
+  mdat->vol_line.bc *= coef->vll.bc_gain;
+  mdat->vol_line.ca *= coef->vll.ca_gain;
 }
 
 /**

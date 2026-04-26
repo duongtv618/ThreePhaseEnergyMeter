@@ -63,6 +63,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "User/lib/src/modbus_rtu.c"
     "User/lib/src/meter_register.c"
     "User/common/src/maf.c"
+    "User/lib/src/mqtt.c"
 )
 
 # Add include paths

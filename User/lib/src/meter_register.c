@@ -24,25 +24,9 @@ static struct meter_data_s last_meter;
 /* ============================================================
  *  Float → two u16 registers (big-endian word order)
  * ============================================================ */
-static void write_f32(uint16_t reg_addr, float32_t val)
+static inline void write_f32(uint16_t reg_addr, float32_t val)
 {
-	uint32_t raw;
-	uint16_t hi, lo;
-
-	/* Type-pun float → u32 without UB */
-	memcpy(&raw, &val, sizeof(raw));
-
-	hi = (uint16_t)(raw >> 16);
-	lo = (uint16_t)(raw & 0xFFFFu);
-
-	/*
-	 * Use mb_set_holding_reg() so values flow through the
-	 * existing Modbus input-register store.
-	 * Swap to mb_set_input_reg() if you want these read-only
-	 * (FC04 only) and reserve holding regs for setpoints.
-	 */
-	mb_set_holding_reg(reg_addr,     hi);
-	mb_set_holding_reg(reg_addr + 1, lo);
+	mb_set_float(reg_addr, val);
 }
 
 /* ============================================================
@@ -95,7 +79,10 @@ void meter_update_registers(const struct meter_data_s *m)
 	write_f32(REG_FREQ, m->frequency);
 
 	/* ── Energy ──────────────────────────────────────────── */
-	write_f32(REG_KWH_EXP,   m->energy_hWh);
+	write_f32(REG_KWH_EXP,   m->energy_hWh/10.0f);  /* convert hWh → kWh */
+	write_f32(REG_KWH_IMP,   0.0f);  /* not implemented */
+	write_f32(REG_KVARH_EXP, 0.0f);  /* not implemented */
+	write_f32(REG_KVARH_IMP, 0.0f);  /* not implemented */
 
 	/* ── THD ─────────────────────────────────────────────── */
 	write_f32(REG_THD_VA, m->phase_data[0].thd.voltage);

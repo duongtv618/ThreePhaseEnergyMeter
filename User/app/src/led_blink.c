@@ -5,9 +5,10 @@
 #include "main.h"
 #include "task.h"
 
+#define LED_BLINK_TIME_MS 50
+
 #define BLINK_TASK_STACK_SIZE APP_DEFAULT_TASK_STACK_SIZE
 #define BLINK_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
-#define BLINK_TASK_INTERVAL_MS 500
 
 /* Global Variables */
 
@@ -19,6 +20,10 @@ static struct {
 
 static void blink_led_task(void* pvParameters);
 
+void led_trigger(void) {
+  xTaskNotifyGive(blinkLEDTaskData.handle);
+}
+
 /* Blink LED Task */
 void led_blink_init(void) {
   blinkLEDTaskData.handle =
@@ -28,10 +33,11 @@ void led_blink_init(void) {
 }
 
 static void blink_led_task(void* pvParameters) {
-  TickType_t last_wake_time = xTaskGetTickCount();
   while (1) {
     /* Toggle LED */
-    LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_5);
-    vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(BLINK_TASK_INTERVAL_MS));
+    if (xTaskNotifyWait(0, 0, NULL, portMAX_DELAY) != pdPASS) continue; 
+    LL_GPIO_SetOutputPin(GPIOA, GPIO_PIN_5);
+    vTaskDelay(pdMS_TO_TICKS(LED_BLINK_TIME_MS));
+    LL_GPIO_ResetOutputPin(GPIOA, GPIO_PIN_5);
   }
 }
