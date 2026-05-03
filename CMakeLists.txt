@@ -64,6 +64,9 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     "User/lib/src/meter_register.c"
     "User/common/src/maf.c"
     "User/lib/src/mqtt.c"
+    "User/safety/src/deadline_monitor.c"
+    "User/safety/src/supervisor.c"
+    "User/safety/src/ram_pat_ck.c"
 )
 
 # Add include paths
@@ -74,6 +77,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     "User/mock/inc"
     "User/common/inc"
     "User/sup/inc"
+    "User/safety/inc"
 )
 
 # Add project symbols (macros)
