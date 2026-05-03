@@ -21,6 +21,7 @@
 #include "app_cfg.h"
 #include "arm_math.h"
 #include "calib.h"
+#include "deadline_monitor.h"
 #include "dsp.h"
 #include "led_blink.h"
 #include "main.h"
@@ -70,6 +71,8 @@ static struct adc_task_s {
   StaticTask_t buffer;
   TaskHandle_t handle;
 } adc_task;
+
+static struct task_health_status adc_task_health;
 
 static struct meter_data_s meter_data = {
     .energy_hWh = 0.0f,
@@ -126,6 +129,7 @@ void adc_sample_init(void) {
   adc_task.handle = xTaskCreateStatic(
       adc_sample_task, "ADCSample", APP_DEFAULT_TASK_STACK_SIZE, NULL,
       APP_DEFAULT_TASK_PRIORITY, adc_task.stack, &adc_task.buffer);
+  (void)dm_register(&adc_task_health, DM_DEADLINE_ADC_SAMPLE_TASK_US);
 }
 
 void adc_sample_task(void* pvParameters) {
@@ -148,7 +152,6 @@ void adc_sample_task(void* pvParameters) {
 #endif
 
   while (1) {
-    uint32_t start_time = DWT->CYCCNT;  // For time calculation
     dsp_coef = calib_get_dsp_coef();
 
     uint32_t noti_val;
@@ -163,6 +166,8 @@ void adc_sample_task(void* pvParameters) {
     } else {
       while (1);  // Err here
     }
+
+    uint32_t start_cycles = DWT->CYCCNT;
 
 #ifdef DSP_USE_FLOAT
     /** Take processible data from adc buffer */
@@ -365,7 +370,9 @@ void adc_sample_task(void* pvParameters) {
         break;
     }
     //<1ms for 3 phase with full data, so fast =))
-    process_time = DWT->CYCCNT - start_time;
+    process_time = DWT->CYCCNT - start_cycles;
+    dm_report(&adc_task_health, dm_cycles_to_us(process_time));
+    (void)dm_is_healthy(&adc_task_health);
   }
 }
 /**

@@ -3,7 +3,9 @@
 #include <string.h>
 
 #include "FreeRTOS.h"
+#include "deadline_monitor.h"
 #include "share_data.h"
+#include "stm32f4xx.h"
 #include "share_types.h"
 #include "task.h"
 #include "uart_dma.h"
@@ -30,6 +32,8 @@ static struct _commTask_s {
   StackType_t taskStack[APP_DEFAULT_TASK_STACK_SIZE];
   TaskHandle_t taskHandle;
 } commTaskData;
+
+static struct task_health_status comm_task_health;
 
 /** Not running message */
 // const static char* meterNotRunningMsg = "Meter not running\r\n";
@@ -61,10 +65,13 @@ static void comm_task(void* params) {
     //                 pdMS_TO_TICKS(1000));  // Adjust delay as needed
 
     xTaskNotifyWait(0, 0x00, NULL, portMAX_DELAY);
+    uint32_t start_cycles = DWT->CYCCNT;
     meter_data = shdat_get_meter_data();
     meter_update_registers(&meter_data);
     mb_poll();
     calib_poll();
+    dm_report(&comm_task_health, dm_cycles_to_us(DWT->CYCCNT - start_cycles));
+    (void)dm_is_healthy(&comm_task_health);
   }
 }
 
@@ -81,6 +88,7 @@ void comm_init(void) {
                         &commTaskData.taskBuffer  // Task control block buffer
       );
   mb_init(commTaskData.taskHandle);
+  (void)dm_register(&comm_task_health, DM_DEADLINE_COMM_TASK_US);
 }
 
 static char* ftoa(float32_t value, char* str, int digit) {

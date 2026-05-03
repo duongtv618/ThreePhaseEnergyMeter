@@ -1,0 +1,87 @@
+---
+:source:
+  :file: User/lib/test/test_dsp.c
+  :dirname: User/lib/test
+  :basename: test_dsp.c
+:successes:
+- :test: test_dsp_phase_unity_pf_rms
+  :line: 99
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_phase_unity_pf_power
+  :line: 116
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_phase_60deg_pf
+  :line: 136
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_phase_90deg_zero_active_power
+  :line: 156
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_phase_coef_scales_rms
+  :line: 175
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_phase_act_pwr_never_exceeds_app_pwr
+  :line: 197
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_phase_zero_input
+  :line: 215
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_vol_line_balanced_3phase
+  :line: 240
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_vol_line_gain_applied
+  :line: 266
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_vol_line_zero_input
+  :line: 295
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_fre_1p_updates_frequency
+  :line: 321
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_fre_3p_updates_frequency
+  :line: 338
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_fre_1p_zero_buf_no_crash
+  :line: 355
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_thd_pure_sine_near_zero
+  :line: 375
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_thd_with_3rd_harmonic
+  :line: 396
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_thd_with_3rd_and_5th_harmonic
+  :line: 423
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_thd_short_buffer_no_change
+  :line: 449
+  :message: ''
+  :unity_test_time: 0
+- :test: test_dsp_thd_angle_cosine_input
+  :line: 471
+  :message: ''
+  :unity_test_time: 0
+:failures: []
+:ignores: []
+:counts:
+  :total: 18
+  :passed: 18
+  :failed: 0
+  :ignored: 0
+:stdout: []
+:time: 0.003486092999992252

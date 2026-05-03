@@ -90,7 +90,7 @@ void dsp_process_phase(struct phase_data_s* phase_dat, float32_t* vol_buf,
                  &phase_dat->react_pwr);
   }
 
-  phase_dat->pf = phase_dat->act_pwr / phase_dat->app_pwr;
+  phase_dat->pf = (phase_dat->app_pwr > 1e-9f) ? (phase_dat->act_pwr / phase_dat->app_pwr) : 0.0f;
   float32_t phi = acosf(phase_dat->pf);
   phi = phi * 180.0f / PI;
   ui_diff_angel = phase_dat->angle.current - phase_dat->angle.voltage;
@@ -191,9 +191,9 @@ void dsp_process_thd(struct phase_data_s* phase_data, float32_t* data_buf,
 
   arm_rfft_fast_instance_f32 instance;
   #if (FFT_BUF_SIZE == 2048)
-  arm_rfft_2048_fast_init_f32(&instance);
+  arm_rfft_fast_init_2048_f32(&instance);
   #elif (FFT_BUF_SIZE == 1024)
-  arm_rfft_1024_fast_init_f32(&instance);
+  arm_rfft_fast_init_1024_f32(&instance);
   #endif
 
   /** Forward FFT */

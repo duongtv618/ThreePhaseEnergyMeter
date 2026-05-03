@@ -1,8 +1,10 @@
+#include <string.h>
 #include "maf.h"
 
 #include <stdint.h>
 
 void maf_init(struct maf_s* maf) {
+  memset(maf->samples, 0, sizeof(maf->samples));
   maf->sample_count = 0;
   maf->sum = 0.0f;
 }

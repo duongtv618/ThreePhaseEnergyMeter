@@ -1,5 +1,16 @@
 #include "supervisor.h"
 
+#if defined(ARM_MATH_HOST) && ARM_MATH_HOST
+
+void supervisor_init(void) {
+}
+
+uint8_t supervisor_service(void) {
+    return 0;
+}
+
+#else
+
 #include "stm32f4xx_ll_iwdg.h"
 #include "stm32f411xe.h"
 
@@ -16,3 +27,5 @@ uint8_t supervisor_service(void) {
     LL_IWDG_ReloadCounter(IWDG);
     return 1;
 }
+
+#endif

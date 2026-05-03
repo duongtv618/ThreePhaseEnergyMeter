@@ -82,6 +82,7 @@ int main(void)
   MX_TIM11_Init();
 
   app_init();
+  MX_FREERTOS_Init();
   app_start();
 
   while (1);

@@ -25,7 +25,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "app_cfg.h"
+#include "deadline_monitor.h"
+#include "stm32f4xx.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,7 +47,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+static struct task_health_status default_task_health_dm;
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
 uint32_t defaultTaskBuffer[ 128 ];
@@ -106,6 +108,7 @@ void MX_FREERTOS_Init(void) {
   /* definition and creation of defaultTask */
   osThreadStaticDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128, defaultTaskBuffer, &defaultTaskControlBlock);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  (void)dm_register(&default_task_health_dm, DM_DEADLINE_DEFAULT_TASK_US);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -126,7 +129,10 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
+    uint32_t start_cycles = DWT->CYCCNT;
     osDelay(1);
+    dm_report(&default_task_health_dm, dm_cycles_to_us(DWT->CYCCNT - start_cycles));
+    (void)dm_is_healthy(&default_task_health_dm);
   }
   /* USER CODE END StartDefaultTask */
 }

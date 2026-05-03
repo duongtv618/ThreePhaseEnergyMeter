@@ -626,11 +626,12 @@ float32_t mb_get_float(uint16_t addr) {
 	lo = mb_get_holding_reg(addr + 1);
 
 	/* Type-pun u32 → float without UB */
-	memcpy(&raw, &hi, sizeof(hi));
-	raw <<= 16;
-	memcpy(&raw, &lo, sizeof(lo));
+	/* Assemble big-endian word order: hi=upper 16 bits, lo=lower 16 bits */
+	raw = ((uint32_t)hi << 16) | (uint32_t)lo;
 
-	return *(float32_t *)&raw;
+	float32_t result;
+	memcpy(&result, &raw, sizeof(result));
+	return result;
 }
 
 /* ============================================================

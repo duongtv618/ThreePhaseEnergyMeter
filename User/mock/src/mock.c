@@ -11,10 +11,14 @@
  */
 
 #include "mock.h"
-
-#include "FreeRTOS.h"
-#include "stm32f4xx.h"
-#include "task.h"
+/* ---- x86 test build: swap hardware headers for stubs ---- */
+#ifdef ARM_MATH_HOST
+  #include "mock_hw_stub.h"
+#else
+  #include "FreeRTOS.h"
+  #include "stm32f4xx.h"
+  #include "task.h"
+#endif
 
 #define DEFAULT_TIMER_CLOCK 100000000
 

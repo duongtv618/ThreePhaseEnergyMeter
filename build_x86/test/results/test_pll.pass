@@ -1,0 +1,83 @@
+---
+:source:
+  :file: User/lib/test/test_pll.c
+  :dirname: User/lib/test
+  :basename: test_pll.c
+:successes:
+- :test: test_pll_init_1p_sets_theta_to_270
+  :line: 67
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_init_1p_sets_delta_theta
+  :line: 75
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_init_1p_stores_fs_and_f0
+  :line: 84
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_init_1p_SOGI_cleared
+  :line: 92
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_init_3p_sets_theta_to_270
+  :line: 101
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_init_3p_sets_delta_theta
+  :line: 109
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_is_locked_returns_0_before_lock
+  :line: 121
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_is_locked_returns_1_when_counter_at_threshold
+  :line: 129
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_is_locked_returns_0_when_counter_below_threshold
+  :line: 137
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_update_1p_theta_stays_in_0_to_360
+  :line: 149
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_update_3p_theta_stays_in_0_to_360
+  :line: 164
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_update_1p_frequency_estimate_within_2Hz
+  :line: 183
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_update_3p_frequency_estimate_within_2Hz
+  :line: 197
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_update_1p_locks_within_max_cycles
+  :line: 216
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_update_3p_locks_within_max_cycles
+  :line: 230
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_update_1p_tracks_49Hz
+  :line: 250
+  :message: ''
+  :unity_test_time: 0
+- :test: test_pll_update_3p_tracks_51Hz
+  :line: 265
+  :message: ''
+  :unity_test_time: 0
+:failures: []
+:ignores: []
+:counts:
+  :total: 17
+  :passed: 17
+  :failed: 0
+  :ignored: 0
+:stdout: []
+:time: 0.014169370999979947

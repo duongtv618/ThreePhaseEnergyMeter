@@ -1,0 +1,95 @@
+---
+:source:
+  :file: User/lib/test/test_pll_edge.c
+  :dirname: User/lib/test
+  :basename: test_pll_edge.c
+:successes:
+- :test: test_edge_1p_zero_input_theta_stays_valid
+  :line: 95
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_3p_zero_input_theta_stays_valid
+  :line: 108
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_1p_zero_input_clears_lock
+  :line: 124
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_3p_zero_input_clears_lock
+  :line: 142
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_1p_large_amplitude_theta_valid
+  :line: 170
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_3p_large_amplitude_theta_valid
+  :line: 186
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_3p_amplitude_drop_stays_locked
+  :line: 209
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_1p_signal_loss_and_recovery
+  :line: 239
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_3p_signal_loss_and_recovery
+  :line: 272
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_3p_phase_jump_180_recovers
+  :line: 299
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_1p_phase_jump_180_recovers
+  :line: 321
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_3p_locks_at_45Hz
+  :line: 344
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_3p_locks_at_65Hz
+  :line: 363
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_update_fs_arr_clamped_at_50Hz
+  :line: 389
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_update_fs_clamps_below_45Hz
+  :line: 410
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_update_fs_clamps_above_65Hz
+  :line: 425
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_1p_single_update_after_init
+  :line: 444
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_3p_single_update_after_init
+  :line: 455
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_1p_reinit_while_running_resets_state
+  :line: 473
+  :message: ''
+  :unity_test_time: 0
+- :test: test_edge_3p_reinit_while_running_resets_state
+  :line: 489
+  :message: ''
+  :unity_test_time: 0
+:failures: []
+:ignores: []
+:counts:
+  :total: 20
+  :passed: 20
+  :failed: 0
+  :ignored: 0
+:stdout: []
+:time: 0.009454940000068746

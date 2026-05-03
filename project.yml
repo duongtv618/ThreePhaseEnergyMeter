@@ -1,0 +1,104 @@
+# Ceedling project configuration for 3PhaseEnergyMeter DSP tests
+# 
+# To use Ceedling:
+# 1. Install Ruby and Ceedling: gem install ceedling
+# 2. Run: ceedling
+# 3. Run tests: ceedling test:all
+
+:project:
+  :use_test_preprocessor: :all
+  :build_root: build_x86
+  :release_build: FALSE
+
+:paths:
+  :test:
+    - +:User/lib/test/**
+    - +:User/safety/test/**
+    - +:User/mock/test/**
+    - +:User/common/test/**
+  :source:
+    - User/lib/src/**
+    - User/common/src/**
+    - User/safety/src/**
+    - User/mock/src/**
+  :include:
+    - +:User/lib/inc/**
+    - +:User/common/inc/**
+    - +:User/safety/inc/**
+    - +:User/lib/test/**
+    - +:Core/Inc/**
+    - +:User/app/inc/**
+    - +:User/safety/inc/**
+    - +:User/mock/inc/**
+    - +:User/mock/test/**
+    - +:User/sup/inc/**
+    - +:Middlewares/CMSIS/CMSIS-DSP/Include/**
+    - +:Middlewares/CMSIS/submodule/external/CMSIS_5/CMSIS/Core/Include/**
+
+:defines:
+  :test:
+    - DSP_USE_FLOAT
+    - ARM_MATH_HOST
+
+  :source:
+    - DSP_USE_FLOAT
+
+:packages:
+  - :name: cmock
+    :version: ">=2.5.0"
+  - :name: unity
+    :version: ">=2.5.0"
+  - :name: ceedling
+    :version: ">=0.31.0"
+
+:unity:
+  :mock_path: User/mock/inc
+  :test_file_includes:
+    - dsp.h
+    - pll.h
+    - share_types.h
+    - maf.h
+
+:cmock:
+  :mock_path: User/mock/src
+  :enforce_strict_ordering: FALSE
+
+:test_file:
+  :test_prefix: test_
+  :includes:
+    - dsp.h
+    - share_types.h
+    - app_cfg.h
+
+# :tools:
+#   :linker:
+#     :executable: gcc
+#     :arguments:
+#       - ${1}
+#       - -o ${2}
+#       - -LMiddlewares/CMSIS
+#       - -lcmsisdsp
+#       - -lm
+
+:tools:
+  :test_linker:
+    :executable: gcc_cmsis
+    :arguments:
+      - ${1}
+      - -o ${2}
+
+# :flags:
+#   :test:
+#     :link:
+#       - -LMiddlewares/CMSIS
+#       - -lcmsisdsp  
+#       - -lm
+
+:compiler:
+  :options:
+    :test:
+      - -Wall
+      - -Wextra
+      - -Wpedantic
+    :release:
+      - -O2 

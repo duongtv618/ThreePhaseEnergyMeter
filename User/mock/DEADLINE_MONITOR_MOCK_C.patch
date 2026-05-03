@@ -1,0 +1,44 @@
+--- a/User/mock/src/mock.c
++++ b/User/mock/src/mock.c
+@@ -10,6 +10,8 @@
+  */
+ 
+ #include "mock.h"
++#include "app_cfg.h"
++#include "deadline_monitor.h"
+ /* ---- x86 test build: swap hardware headers for stubs ---- */
+ #ifdef ARM_MATH_HOST
+   #include "mock_hw_stub.h"
+@@ -42,6 +44,7 @@
+ static void _mock_task(void* pvParameters);
+ static StackType_t mock_task_stack[APP_DEFAULT_TASK_STACK_SIZE];
+ static StaticTask_t mock_task_buffer;
++static struct task_health_status mock_signal_task_health;
+ static void clamp(float32_t* x, float32_t ceil, float32_t floor);
+ static int32_t get_noise_val(void);
+ static float32_t harmonic_noise(float32_t n, float32_t omega);
+@@ -186,6 +189,7 @@
+   xTaskCreateStatic(_mock_task, "MockSignalGen", APP_DEFAULT_TASK_STACK_SIZE,
+                     NULL, APP_DEFAULT_TASK_PRIORITY, mock_task_stack,
+                     &mock_task_buffer);
++  (void)dm_register(&mock_signal_task_health, DM_DEADLINE_MOCK_SIGNAL_TASK_US);
+ }
+ 
+ /**
+@@ -200,6 +204,7 @@
+ static void _mock_task(void* pvParameters) {
+   TickType_t lastWakeTime = xTaskGetTickCount();
+   while (1) {
++    uint32_t start_cycles = DWT->CYCCNT;
+     if (mock_sin.f0 > mock_sin.f0_target) {
+       mock_sin.f0 -= mock_sin.step;
+     } else if (mock_sin.f0 < mock_sin.f0_target) {
+@@ -230,6 +235,8 @@
+     }
+ 
+     vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(mock_DMA_cfg.signalPeriod));
++    dm_report(&mock_signal_task_health, dm_cycles_to_us(DWT->CYCCNT - start_cycles));
++    (void)dm_is_healthy(&mock_signal_task_health);
+   }
+ }
+ 

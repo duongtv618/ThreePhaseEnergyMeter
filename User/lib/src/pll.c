@@ -3,7 +3,6 @@
 #include "app_cfg.h"
 #include "arm_math.h"
 #include "mock.h"
-
 #include "serial_plot.h"
 
 #define TWO_PI_Q31 2147483647
@@ -26,7 +25,6 @@
 
 #define ABS(x) (x < 0.0f ? (x * -1.0f) : x)
 
-
 // struct dsogi_s {
 //   float32_t b0, b2, a1, a2;
 //   float32_t x1, x2, y1, y2;
@@ -42,7 +40,8 @@ static void pll_timer_update_arr(uint32_t newARR);
 #ifdef DSP_USE_FLOAT
 // static inline void DSOGI_update(struct dsogi_s* s, float32_t input);
 static inline void SOGI_Update(struct pll_s* pll, float32_t vin, float32_t Ts);
-// static void SOGI_Update_Coeffs(struct dsogi_s* s, float32_t omega_pll, float32_t fs);
+// static void SOGI_Update_Coeffs(struct dsogi_s* s, float32_t omega_pll,
+// float32_t fs);
 
 /**
  * @brief SOGI update
@@ -67,29 +66,31 @@ static inline void SOGI_Update(struct pll_s* pll, float32_t vin, float32_t Ts) {
 // static inline void DSOGI_update(struct dsogi_s* s, float32_t input) {
 //   float32_t v_alpha = s->b0*input + s->b2*s->x2 - s->a1*s->y1 - s->a2*s->y2;
 //   float32_t x = (s->b0 / 1.41421356f) * (s->b0 / 1.41421356f / 2.0f);
-//   float32_t v_beta = (s->b0 * 0.5f * x) * (input + 2.0f * s->x1 + s->x2) - s->a1 * s->q1 - s->a2 * s->q2;
+//   float32_t v_beta = (s->b0 * 0.5f * x) * (input + 2.0f * s->x1 + s->x2) -
+//   s->a1 * s->q1 - s->a2 * s->q2;
 
 //   s->x2 = s->x1;
 //     s->x1 = input;
-    
+
 //     s->y2 = s->y1;
 //     s->y1 = v_alpha;
-    
+
 //     s->q2 = s->q1;
 //     s->q1 = v_beta;
 //     s->out_alpha = v_alpha;
 //     s->out_beta = v_beta;
 // }
 
-// static void SOGI_Update_Coeffs(struct dsogi_s* s, float32_t omega_pll, float32_t fs) {
+// static void SOGI_Update_Coeffs(struct dsogi_s* s, float32_t omega_pll,
+// float32_t fs) {
 //     float32_t Ts = 1.0f / fs;
 //     float32_t k = 1.41421356f;
 //     float32_t x = omega_pll * Ts;
 //     float32_t x2 = x * x;
 //     float32_t kx = k * x;
-    
+
 //     float32_t A = 4.0f + 2.0f * kx + x2;
-    
+
 //     s->b0 = (2.0f * kx) / A;
 //     s->b2 = -(s->b0);
 //     s->a1 = (2.0f * x2 - 8.0f) / A;
@@ -103,9 +104,8 @@ static inline void SOGI_Update(struct pll_s* pll, float32_t vin, float32_t Ts) {
  * @return float32_t
  */
 static inline float32_t clamp(float32_t in) {
-  if (in > DEG_ROUND) in -= DEG_ROUND;
-  if (in < 0.0f) in += DEG_ROUND;
-
+  while (in >= DEG_ROUND) in -= DEG_ROUND;
+  while (in < 0.0f) in += DEG_ROUND;
   return in;
 }
 #endif
@@ -223,11 +223,10 @@ void pll_init_3p(struct pll_s* pll, float32_t nominal_f, float32_t fs) {
   pll->pi_instance.Kp = TUNED_KP;
   pll->pi_instance.Ki = TUNED_KI / fs;
   pll->pi_instance.Kd = 0.0f;
+  pll->locked = 0;
   arm_pid_init_f32(&pll->pi_instance, 1);
 
   pll->timer.clock = 100000000;
-
-  maf_init(&pll->q_maf);
 
   pll->delta_theta = (360.0f * nominal_f) / fs;
 }
@@ -240,7 +239,8 @@ void pll_init_3p(struct pll_s* pll, float32_t nominal_f, float32_t fs) {
  * @param fs Sampling frequency (Real)
  * @param timerClock ADC driving TIMER CLOCK in HZ
  */
-void pll_init_1p(struct pll_s* pll, float32_t f0, float32_t fs, uint32_t timerClock) {
+void pll_init_1p(struct pll_s* pll, float32_t f0, float32_t fs,
+                 uint32_t timerClock) {
   pll->delta_theta = f0 / fs * 360.0f;
   pll->fs = fs;
   pll->f0 = f0;
@@ -250,6 +250,8 @@ void pll_init_1p(struct pll_s* pll, float32_t f0, float32_t fs, uint32_t timerCl
   pll->SOGI.beta = 0.0f;
   pll->SOGI.omega = 2.0f * PI * f0;
   pll->SOGI.ts = 1.0f / fs;
+
+  pll->locked = 0;
 
   pll->timer.clock = timerClock;
 
@@ -304,10 +306,12 @@ void pll_update_1p(struct pll_s* pll, float32_t vin) {
   arm_park_f32(pll->SOGI.alpha, pll->SOGI.beta, &d, &q, sin,
                cos);  // Park transform to get d,q
   delta_omega = arm_pid_f32(&pll->pi_instance, q);
+  delta_omega /= pll->fs;  // Convert to deg per sample
+  delta_omega = RAD_TO_DEG(delta_omega);
   pll->theta += (pll->delta_theta + delta_omega);
 
   if (ABS(q) < LOCK_THRESH_HOLD)
-    pll->locked = 1;
+    pll->locked = pll->locked < LOCK_SQUENCE ? pll->locked + 1 : pll->locked;
   else
     pll->locked = 0;
 
@@ -327,7 +331,7 @@ void pll_update_1p(struct pll_s* pll, float32_t vin) {
  * @param vc Voltage C
  */
 void pll_update_3p(struct pll_s* pll, float32_t va, float32_t vb,
-                          float32_t vc) {
+                   float32_t vc) {
   float32_t alpha, beta, d, q, sin, cos, delta;
 
   /** Find normal point for phase balance */
@@ -356,7 +360,7 @@ void pll_update_3p(struct pll_s* pll, float32_t va, float32_t vb,
 
   if (fabsf(q) < LOCK_THRESH_HOLD)
     pll->locked = pll->locked < LOCK_SQUENCE ? pll->locked + 1 : pll->locked;
-    // pll->locked = 1;
+  // pll->locked = 1;
   else
     pll->locked = 0;
 
@@ -366,7 +370,7 @@ void pll_update_3p(struct pll_s* pll, float32_t va, float32_t vb,
   /** Current estimated frequency */
   float32_t freq = (pll->delta_theta + delta) * pll->fs / DEG_ROUND;
   /** Add to LPF for smooth freqency output, fc = 10Hz */
-  // pll->fre = (0.99f * pll->fre) + (0.01f * freq); 
+  // pll->fre = (0.99f * pll->fre) + (0.01f * freq);
   pll->fre = freq;
 }
 
@@ -378,5 +382,7 @@ void pll_update_3p(struct pll_s* pll, float32_t va, float32_t vb,
  * 1 if the PLL is locked
  * 0 if the PLL is not locked
  */
-uint32_t pll_is_locked(struct pll_s* pll) { return (pll->locked >= LOCK_SQUENCE); }
+uint32_t pll_is_locked(struct pll_s* pll) {
+  return (pll->locked >= LOCK_SQUENCE);
+}
 #endif

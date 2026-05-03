@@ -1,0 +1,83 @@
+---
+:source:
+  :file: User/mock/test/test_mock.c
+  :dirname: User/mock/test
+  :basename: test_mock.c
+:successes:
+- :test: test_mock_sin_gen_output_within_adc_range
+  :line: 61
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_sin_gen_dc_offset_near_midpoint
+  :line: 77
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_sin_gen_jump_space_skips_indices
+  :line: 93
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_sin_gen_phase_shift_180_inverts_wave
+  :line: 109
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_sin_gen_peak_amplitude_correct
+  :line: 126
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_sin_gen_trough_amplitude_correct
+  :line: 143
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_sin_gen_different_frequencies_differ
+  :line: 159
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_3p_all_samples_within_adc_range
+  :line: 181
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_3p_dc_offset_all_channels
+  :line: 198
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_3p_voltage_phases_120_apart
+  :line: 218
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_3p_current_phase_shift_applied
+  :line: 250
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_3p_zero_length_no_crash
+  :line: 272
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_DMA_init_registers_buffer
+  :line: 290
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_timer_update_arr_no_crash
+  :line: 324
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_timer_update_arr_changes_internal_fs
+  :line: 337
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_change_frequency_no_crash
+  :line: 357
+  :message: ''
+  :unity_test_time: 0
+- :test: test_mock_change_frequency_zero_step
+  :line: 366
+  :message: ''
+  :unity_test_time: 0
+:failures: []
+:ignores: []
+:counts:
+  :total: 17
+  :passed: 17
+  :failed: 0
+  :ignored: 0
+:stdout: []
+:time: 0.001220251999939137

@@ -3,6 +3,7 @@
 #include "FreeRTOS.h"
 #include "adc_sample.h"
 #include "comm.h"
+#include "deadline_monitor.h"
 #include "led_blink.h"
 #include "stm32f4xx.h"
 #include "task.h"
@@ -19,6 +20,7 @@ static void DWT_init(void) {
  * @brief Initialize the application
  */
 void app_init(void) {
+  dm_init();
   DWT_init();
   led_blink_init();
   adc_sample_init();

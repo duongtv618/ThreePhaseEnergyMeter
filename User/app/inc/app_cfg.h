@@ -21,4 +21,11 @@
 #define BIN_1_COUNT 8
 #define FFT_BUF_SIZE (METER_SAMPLES_PER_CYCLE * BIN_1_COUNT)
 
+/* deadline_monitor: max expected task iteration / work time (microseconds) */
+#define DM_DEADLINE_ADC_SAMPLE_TASK_US 10000U
+#define DM_DEADLINE_COMM_TASK_US 200000U
+#define DM_DEADLINE_LED_BLINK_TASK_US 80000U
+#define DM_DEADLINE_MOCK_SIGNAL_TASK_US 50000U
+#define DM_DEADLINE_DEFAULT_TASK_US 10000U
+
 #endif /* APP_CFG_H */
